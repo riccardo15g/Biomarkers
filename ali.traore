@@ -1,0 +1,77 @@
+rm(list = ls())
+
+setwd("C:/Users/A114-33-C28D/OneDrive/Documenti/R/Biomarkers")
+data = read.csv('Homework.csv')
+
+#Functions-------------------------------------------
+lateralization = function(data){
+  print(t.test(data$DATSCAN_CAUDATE_L,data$DATSCAN_CAUDATE_R))
+  print(t.test(data$DATSCAN_PUTAMEN_L,data$DATSCAN_PUTAMEN_R))
+  print(t.test(data$DATSCAN_PUTAMEN_L_ANT,data$DATSCAN_PUTAMEN_R_ANT))
+}
+
+Subgroup_comp = function(data1,data2){
+  print(t.test(data1$DATSCAN_CAUDATE_L,data2$DATSCAN_CAUDATE_L))
+  print(t.test(data1$DATSCAN_CAUDATE_R,data2$DATSCAN_CAUDATE_R))
+  print(t.test(data1$DATSCAN_PUTAMEN_L,data2$DATSCAN_PUTAMEN_L))
+  print(t.test(data1$DATSCAN_PUTAMEN_R,data2$DATSCAN_PUTAMEN_R))
+  print(t.test(data1$DATSCAN_PUTAMEN_L_ANT,data2$DATSCAN_PUTAMEN_L_ANT))
+  print(t.test(data1$DATSCAN_PUTAMEN_R_ANT,data2$DATSCAN_PUTAMEN_R_ANT))
+}
+
+Confounder = function(data1,data2,conf){
+  t.test(data1[,conf],data2[,conf])
+  
+}
+
+
+
+
+#Nans and data type---------------------------------------
+
+name_list = names(data) # variable names
+
+Nans = is.na(data) # Nan matrix
+missing_var = apply(Nans,2,sum)  # Nan occurence
+
+#convert string into categorical
+for (i in 1:ncol(data)){
+  k = which(Nans[,i] %in% FALSE )
+  if (class(data[k[1],i]) == "character"){
+    data[,i] = as.factor(data[,i])
+  }
+}
+
+class_list = sapply(data,class)  #data type
+factor_index = which( class_list == 'factor') #position of categorical
+
+
+
+#HC ANALYSIS (HEALTH COHORT)---------------------------------
+#No significant differences have been found between left and right
+
+HC = data[data$COHORT %in% as.factor("HC"),]
+
+lateralization(HC)
+boxplot(HC$DATSCAN_CAUDATE_L,HC$DATSCAN_CAUDATE_R)
+
+
+#PD ANALYSIS--------------------------------------------------
+# No significant differences have been found between left and right except for putamen_R_ant    
+# Could subgroup variance be the reason? We could run the same study
+# but only for right handed or male ect
+
+PD = data[data$COHORT %in% as.factor("PD"),]
+
+lateralization(PD)
+boxplot(PD$DATSCAN_CAUDATE_L,PD$DATSCAN_CAUDATE_R)
+boxplot(PD$DATSCAN_PUTAMEN_L_ANT,PD$DATSCAN_PUTAMEN_R_ANT)
+
+
+# COnfounders (Age, Sex)--------------------------------------
+
+#Sex negative
+
+Male = HC[HC$SEX == 'Male',]
+Female = HC[HC$SEX == 'Female',]
+Confounder(Male,Female,"ENROLL_AGE")
