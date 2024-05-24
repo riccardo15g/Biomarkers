@@ -1,4 +1,9 @@
+#1) CHANGE TTEST WITH WILCOXON 
+#2) TEST GAUSSAINITY OF THE VARIABLES BEFORE USING PARAMETRIC TESTS, QQPLOT,
+#MEDIAN-MEAN, NORM DDP WITH GAUSSIAN(0,1)
+
 rm(list = ls())
+dev.off()
 
 setwd("C:/Users/A114-33-C28D/OneDrive/Documenti/R/Biomarkers")
 data = read.csv('Homework.csv')
@@ -24,6 +29,17 @@ Confounder = function(data1,data2,conf){
   
 }
 
+Asymmetry_index = function(right,left){
+  AI = 100*abs(right-left)/((right+left)*0.5)
+  return(AI)
+}
+
+Asymmetry_list = function(data){
+  output = data.frame(AI_caudate = Asymmetry_index(data$DATSCAN_CAUDATE_L,data$DATSCAN_CAUDATE_R),
+                      AI_putamen = Asymmetry_index(data$DATSCAN_PUTAMEN_L,data$DATSCAN_PUTAMEN_R),
+                      AI_putamen_ant = Asymmetry_index(data$DATSCAN_PUTAMEN_L_ANT,data$DATSCAN_PUTAMEN_R_ANT))
+  return(output)
+}
 
 
 
@@ -68,10 +84,49 @@ boxplot(PD$DATSCAN_CAUDATE_L,PD$DATSCAN_CAUDATE_R)
 boxplot(PD$DATSCAN_PUTAMEN_L_ANT,PD$DATSCAN_PUTAMEN_R_ANT)
 
 
-# COnfounders (Age, Sex)--------------------------------------
-
-#Sex negative
+# COnfounders (Age, Sex)---------------------------(SEZIONE DA RIVEDERE)
 
 Male = HC[HC$SEX == 'Male',]
 Female = HC[HC$SEX == 'Female',]
-Confounder(Male,Female,"ENROLL_AGE")
+Subgroup_comp(Male,Female)
+
+
+Confounder(HC,PD,"ENROLL_AGE")
+
+
+
+
+library(corrplot)
+#trova un modo di calcolare la correlazione
+
+
+
+#Asymmetry_index----------------------------------------------------------------
+
+AI = Asymmetry_list(data)
+AI[,"AGE"] = data$ENROLL_AGE
+
+plot(AI,pch = 16,col = data$COHORT) #to many PD patient
+plot(AI[data$COHORT == "PD",],pch = 16,col = data$SEX)
+plot(AI[data$COHORT == "HC",],pch = 16,col = data$SEX)
+plot(AI[data$COHORT == "SWEDD",],pch = 16,col = data$SEX)
+
+# Global correlation
+# it does seems that most of the global correlation come from PD (positive corr)
+# So PD differs from HC/SWEDD for a common decrease of SBR in all the regions.
+# In PD/SWEDD the correlation are poorer
+cor(AI)
+
+# HC correlation
+cor(AI[data$COHORT == "HC",])
+
+# PD correlation
+cor(AI[data$COHORT == "PD",])
+
+# SWEDD correlation
+cor(AI[data$COHORT == "SWEDD",])
+
+
+
+
+wilcox.test(data$DATSCAN_CAUDATE_L,data$DATSCAN_CAUDATE_R)
