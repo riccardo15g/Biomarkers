@@ -1,54 +1,66 @@
-#1) CHANGE TTEST WITH WILCOXON 
-#2) TEST GAUSSAINITY OF THE VARIABLES BEFORE USING PARAMETRIC TESTS, QQPLOT,
-#MEDIAN-MEAN, NORM DDP WITH GAUSSIAN(0,1)
-
 rm(list = ls())
 dev.off()
 
 setwd("C:/Users/A114-33-C28D/OneDrive/Documenti/R/Biomarkers")
 data = read.csv('Homework.csv')
 
-#Functions-------------------------------------------
+#FUNCTIONS-----------------------------------------------------------------
+
 lateralization = function(data){
-  print(t.test(data$DATSCAN_CAUDATE_L,data$DATSCAN_CAUDATE_R))
-  print(t.test(data$DATSCAN_PUTAMEN_L,data$DATSCAN_PUTAMEN_R))
-  print(t.test(data$DATSCAN_PUTAMEN_L_ANT,data$DATSCAN_PUTAMEN_R_ANT))
+  print(wilcox.test(data$DATSCAN_CAUDATE_L,data$DATSCAN_CAUDATE_R))
+  print(wilcox.test(data$DATSCAN_PUTAMEN_L,data$DATSCAN_PUTAMEN_R))
+  print(wilcox.test(data$DATSCAN_PUTAMEN_L_ANT,data$DATSCAN_PUTAMEN_R_ANT))
 }
 
 Subgroup_comp = function(data1,data2){
-  print(t.test(data1$DATSCAN_CAUDATE_L,data2$DATSCAN_CAUDATE_L))
-  print(t.test(data1$DATSCAN_CAUDATE_R,data2$DATSCAN_CAUDATE_R))
-  print(t.test(data1$DATSCAN_PUTAMEN_L,data2$DATSCAN_PUTAMEN_L))
-  print(t.test(data1$DATSCAN_PUTAMEN_R,data2$DATSCAN_PUTAMEN_R))
-  print(t.test(data1$DATSCAN_PUTAMEN_L_ANT,data2$DATSCAN_PUTAMEN_L_ANT))
-  print(t.test(data1$DATSCAN_PUTAMEN_R_ANT,data2$DATSCAN_PUTAMEN_R_ANT))
+  print(wilcox.test(data1$DATSCAN_CAUDATE_L,data2$DATSCAN_CAUDATE_L))
+  print(wilcox.test(data1$DATSCAN_CAUDATE_R,data2$DATSCAN_CAUDATE_R))
+  print(wilcox.test(data1$DATSCAN_PUTAMEN_L,data2$DATSCAN_PUTAMEN_L))
+  print(wilcox.test(data1$DATSCAN_PUTAMEN_R,data2$DATSCAN_PUTAMEN_R))
+  print(wilcox.test(data1$DATSCAN_PUTAMEN_L_ANT,data2$DATSCAN_PUTAMEN_L_ANT))
+  print(wilcox.test(data1$DATSCAN_PUTAMEN_R_ANT,data2$DATSCAN_PUTAMEN_R_ANT))
 }
 
 Confounder = function(data1,data2,conf){
-  t.test(data1[,conf],data2[,conf])
-  
+  wilcox.test(data1[,conf],data2[,conf])
 }
 
 Asymmetry_index = function(right,left){
-  AI = 100*abs(right-left)/((right+left)*0.5)
-  return(AI)
+  AI = 100*(right-left)/((right+left)*0.5)
+  sign = AI > 0
+  return(cbind(abs(AI),sign))
 }
 
 Asymmetry_list = function(data){
-  output = data.frame(AI_caudate = Asymmetry_index(data$DATSCAN_CAUDATE_L,data$DATSCAN_CAUDATE_R),
-                      AI_putamen = Asymmetry_index(data$DATSCAN_PUTAMEN_L,data$DATSCAN_PUTAMEN_R),
-                      AI_putamen_ant = Asymmetry_index(data$DATSCAN_PUTAMEN_L_ANT,data$DATSCAN_PUTAMEN_R_ANT))
+  output = data.frame(AI_caudate = Asymmetry_index(data$DATSCAN_CAUDATE_L,data$DATSCAN_CAUDATE_R)[,1],
+                      AI_putamen = Asymmetry_index(data$DATSCAN_PUTAMEN_L,data$DATSCAN_PUTAMEN_R)[,1],
+                      AI_putamen_ant = Asymmetry_index(data$DATSCAN_PUTAMEN_L_ANT,data$DATSCAN_PUTAMEN_R_ANT)[,1])
   return(output)
 }
 
+# keep lines without NaNs for the specified variables
+pair.wise.selection = function(data,var){
+  temp = data[,var]
+  Nans = is.na(temp)
+  not_Nans = Nans == FALSE
+  ind = which(apply(not_Nans,1,all))
+  return(temp[ind,])
+}
+
+# Count occurences
+occurence = function(data,var){
+    library(dplyr)
+    vec = data[,var]
+    data_vec = data.frame(vec)
+    return(count(data_vec,vec))}
 
 
-#Nans and data type---------------------------------------
+#NANS AND DATA TYPE -----------------------------------------------------
+
 
 name_list = names(data) # variable names
-
 Nans = is.na(data) # Nan matrix
-missing_var = apply(Nans,2,sum)  # Nan occurence
+missing_var = 100*apply(Nans,2,sum)/dim(data)[1] # Nan occurence
 
 #convert string into categorical
 for (i in 1:ncol(data)){
@@ -58,22 +70,67 @@ for (i in 1:ncol(data)){
   }
 }
 
-class_list = sapply(data,class)  #data type
-factor_index = which( class_list == 'factor') #position of categorical
+class_list = sapply(data,class)  # data type list
+factor_index = which( class_list == 'factor') #position of categorical variables
+
+
+# GAUSSIANITY_CHECK  NONE OF THEM ARE GAUSSIANS!!! (rank test is needed)
+ks.test(scale(data$DATSCAN_CAUDATE_L),"pnorm")
+ks.test(scale(data$DATSCAN_CAUDATE_R),"pnorm")
+ks.test(scale(data$DATSCAN_PUTAMEN_L),"pnorm")
+ks.test(scale(data$DATSCAN_PUTAMEN_R),"pnorm")
+ks.test(scale(data$DATSCAN_PUTAMEN_L_ANT),"pnorm")
+ks.test(scale(data$DATSCAN_PUTAMEN_R_ANT),"pnorm")
+
+#DATA ANALYSIS------------------------------------------------------------------
+#DAT_SCAN VARIABLES DICREASE WITH AGE and they have a different baseline between Male and Female !!!!!!!
+#write the code
+
+
+#ASYMMETRY_INDEX----------------------------------------------------------------
+
+AI = Asymmetry_list(data)
+data = cbind(data,AI)
+
+plot(AI,pch = 16,col = data$COHORT) #to many PD patient
+plot(AI[data$COHORT == "PD",],pch = 16,col = data$SEX)
+plot(AI[data$COHORT == "HC",],pch = 16,col = data$SEX)
+plot(AI[data$COHORT == "SWEDD",],pch = 16,col = data$SEX)
+
+#lateralization extremely different in PD cohort respect to other groups
+boxplot(data$AI_putamen ~ COHORT, data = data)
+boxplot(data$AI_caudate ~ COHORT, data = data)
+boxplot(data$AI_putamen_ant ~ COHORT, data = data)
+
+
+# AI CORRELATION
+# It does seem that most of the global correlation come from PD (positive corr)
+# So PD differs from HC/SWEDD for a common decrease of SBR in all the regions.
+# In PD/SWEDD the correlations are poorer
+cor(AI)
+
+# HC correlation
+cor(AI[data$COHORT == "HC",])
+
+# PD correlation
+cor(AI[data$COHORT == "PD",])
+
+# SWEDD correlation
+cor(AI[data$COHORT == "SWEDD",])
 
 
 
 #HC ANALYSIS (HEALTH COHORT)---------------------------------
 #No significant differences have been found between left and right
-
 HC = data[data$COHORT %in% as.factor("HC"),]
-
 lateralization(HC)
-boxplot(HC$DATSCAN_CAUDATE_L,HC$DATSCAN_CAUDATE_R)
 
 
 #PD ANALYSIS--------------------------------------------------
-# No significant differences have been found between left and right except for putamen_R_ant    
+# No significant differences have been found between left and right
+# - putamen_R_ant (p = 0.025)   
+# - caudate (p = 0.516)
+# - putamen (p = 0.1499)
 # Could subgroup variance be the reason? We could run the same study
 # but only for right handed or male ect
 
@@ -88,45 +145,113 @@ boxplot(PD$DATSCAN_PUTAMEN_L_ANT,PD$DATSCAN_PUTAMEN_R_ANT)
 
 Male = HC[HC$SEX == 'Male',]
 Female = HC[HC$SEX == 'Female',]
-Subgroup_comp(Male,Female)
+Subgroup_comp(Male,Female) #significant differences between male and female disappear
+# when asymmetrical index is used
+
+#fai un wilcoxon test tra maschi e femmine per gli AI
 
 
 Confounder(HC,PD,"ENROLL_AGE")
 
 
+#Numerical Covariates correlation
+# no significantly higher correlations have been found beetween
+# ai and other numerical variables.
+
+name_list = names(data)
+ind = 1:(dim(data)[2] - 3)
+ind = ind[-factor_index] #numerical variable indexes
+correlation_matrix = data.frame(rep(0,123))
+for (ii in 1:length(ind)){
+  var = PD[,ind[ii]]
+  temp = PD[,159:161]
+  temp[,name_list[ind[ii]]] = var
+  cau = pair.wise.selection(temp[,c(1,4)],c(name_list[ind[ii]],"AI_caudate"))
+  put = pair.wise.selection(temp[,c(2,4)],c(name_list[ind[ii]],"AI_putamen"))
+  put_ant = pair.wise.selection(temp[,c(3,4)],c(name_list[ind[ii]],"AI_putamen_ant"))
+  
+  correlation_matrix[ii,1] = cor(cau)[2,1]
+  correlation_matrix[ii,2] = cor(put)[2,1]
+  correlation_matrix[ii,3] = cor(put_ant)[2,1]
+}
+
+numerical_list = name_list[-factor_index]
 
 
-library(corrplot)
-#trova un modo di calcolare la correlazione
+#implementa glm usando prima i variabili tot dei test attitudianali
+# + età,peso,altezza ecc.-------------------------------------------------------
+
+library(caret)
+library(nnet)
+
+set.seed(111)
+
+#TRAINING SET/ TEST SET-------------------------------------------------------------------------
+#Stratified case
+pd_ind = sample(1:dim(PD)[1],0.7*dim(PD)[1])
+hc_ind = sample(1:dim(HC)[1],0.7*dim(HC)[1])
+
+trn = rbind(PD[pd_ind,],HC[hc_ind,])
+trn$COHORT = as.factor(as.character(trn$COHORT))
+
+tst = rbind(PD[-pd_ind,],HC[-pd_ind,])
+tst$COHORT = as.factor(as.character(tst$COHORT))
+
+#Balanced case  way better results but the dimension is incredibly MORE SPARSE. MORE HCs are neeeded
+pd_ind = sample(1:dim(HC)[1],0.7*dim(HC)[1])
+hc_ind = sample(1:dim(HC)[1],0.7*dim(HC)[1])
+
+trn = rbind(PD[pd_ind,],HC[hc_ind,])
+trn$COHORT = as.factor(as.character(trn$COHORT))
+
+ind = 1:256
+ind = ind[-pd_ind]
+tst = rbind(PD[ind,],HC[-hc_ind,])
+tst$COHORT = as.factor(as.character(tst$COHORT))
 
 
 
-#Asymmetry_index----------------------------------------------------------------
+# MULTINOMIAL--------------------------------------------------------------------
+logifit = multinom(COHORT ~ AI_caudate + AI_putamen + AI_putamen_ant, data = trn , maxit = 200)
+summary(logifit)
+confint(logifit)
+pred = predict(logifit,tst)    
+confusionMatrix(pred,tst$COHORT)
 
-AI = Asymmetry_list(data)
-AI[,"AGE"] = data$ENROLL_AGE
-
-plot(AI,pch = 16,col = data$COHORT) #to many PD patient
-plot(AI[data$COHORT == "PD",],pch = 16,col = data$SEX)
-plot(AI[data$COHORT == "HC",],pch = 16,col = data$SEX)
-plot(AI[data$COHORT == "SWEDD",],pch = 16,col = data$SEX)
-
-# Global correlation
-# it does seems that most of the global correlation come from PD (positive corr)
-# So PD differs from HC/SWEDD for a common decrease of SBR in all the regions.
-# In PD/SWEDD the correlation are poorer
-cor(AI)
-
-# HC correlation
-cor(AI[data$COHORT == "HC",])
-
-# PD correlation
-cor(AI[data$COHORT == "PD",])
-
-# SWEDD correlation
-cor(AI[data$COHORT == "SWEDD",])
+anova(logifit)
 
 
+#BINOMIAL-------------------------------------------------------------------------
+logifit2 = glm(COHORT ~ AI_caudate + AI_putamen + AI_putamen_ant, data = trn, family = binomial)
+summary(logifit2)
+confint(logifit2)
+pred = predict(logifit2,tst,type = "response")
+pred = as.factor(ifelse(pred>0.5,"PD","HC"))
+confusionMatrix(pred,tst$COHORT, positive = "PD")
+anova(logifit2)
+drop1(logifit2)
+
+#categorical variable check----------------------------------------------------
+logifit2 = glm(COHORT ~ AI_caudate + AI_putamen + AI_putamen_ant + SEX + ETHNICITY + HANDED, data = trn, family = binomial)
+summary(logifit2)
+confint(logifit2)
+pred = predict(logifit2,tst,type = "response")
+pred = as.factor(ifelse(pred > 0.5,"PD","HC"))
+confusionMatrix(pred,tst$COHORT,positive = "PD")
+anova(logifit2)
+drop1(logifit2)
+
+#SVM-------------------------------------------------------------------------------
+library(kernlab)
+train.control <- trainControl(method = "cv")
+wgt = length(which(trn$COHORT == "PD"))/length(which(trn$COHORT == "HC"))
+svm.cv = train(COHORT ~ AI_caudate + AI_putamen + AI_putamen_ant, data = trn, method = "svmLinear", trControl = train.control, 
+               class.weights = c(PD = 1, HC = wgt)) 
+svm.cv
+svm.pred = predict(svm.cv,tst)
+confusionMatrix(svm.pred,tst$COHORT,positive = "PD")
 
 
-wilcox.test(data$DATSCAN_CAUDATE_L,data$DATSCAN_CAUDATE_R)
+
+temp = pair.wise.selection(PD,c("AI_caudate","GENETICS"))
+boxplot(AI_caudate ~ GENETICS, PD)
