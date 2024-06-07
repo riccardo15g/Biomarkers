@@ -7,12 +7,15 @@ data = read.csv('Homework.csv')
 #FUNCTIONS-----------------------------------------------------------------
 
 lateralization = function(data){
+  # Evaluating differences between the two hemisphere with wilcoxon test
   print(wilcox.test(data$DATSCAN_CAUDATE_L,data$DATSCAN_CAUDATE_R))
   print(wilcox.test(data$DATSCAN_PUTAMEN_L,data$DATSCAN_PUTAMEN_R))
   print(wilcox.test(data$DATSCAN_PUTAMEN_L_ANT,data$DATSCAN_PUTAMEN_R_ANT))
 }
 
+
 Subgroup_comp = function(data1,data2){
+  # Evaluating differences between two groups with wilcoxon test for main variables (DATSCAN)
   print(wilcox.test(data1$DATSCAN_CAUDATE_L,data2$DATSCAN_CAUDATE_L))
   print(wilcox.test(data1$DATSCAN_CAUDATE_R,data2$DATSCAN_CAUDATE_R))
   print(wilcox.test(data1$DATSCAN_PUTAMEN_L,data2$DATSCAN_PUTAMEN_L))
@@ -21,25 +24,31 @@ Subgroup_comp = function(data1,data2){
   print(wilcox.test(data1$DATSCAN_PUTAMEN_R_ANT,data2$DATSCAN_PUTAMEN_R_ANT))
 }
 
-Confounder = function(data1,data2,conf){
+Comparison = function(data1,data2,conf){
+  # Single variable comparison
   wilcox.test(data1[,conf],data2[,conf])
 }
 
+
 Asymmetry_index = function(right,left){
+  # Return asymmetry index and the lateralization verse
+  # (1 for right lat. 0 for left lat.)
   AI = 100*(right-left)/((right+left)*0.5)
   sign = AI > 0
   return(cbind(abs(AI),sign))
 }
 
 Asymmetry_list = function(data){
+  #Perform asymmetry index for main DATSCAN variable
   output = data.frame(AI_caudate = Asymmetry_index(data$DATSCAN_CAUDATE_L,data$DATSCAN_CAUDATE_R)[,1],
                       AI_putamen = Asymmetry_index(data$DATSCAN_PUTAMEN_L,data$DATSCAN_PUTAMEN_R)[,1],
                       AI_putamen_ant = Asymmetry_index(data$DATSCAN_PUTAMEN_L_ANT,data$DATSCAN_PUTAMEN_R_ANT)[,1])
   return(output)
 }
 
-# keep lines without NaNs for the specified variables
+
 pair.wise.selection = function(data,var){
+  # It keeps observations without NaNs for the specified variables
   temp = data[,var]
   Nans = is.na(temp)
   not_Nans = Nans == FALSE
@@ -47,20 +56,23 @@ pair.wise.selection = function(data,var){
   return(temp[ind,])
 }
 
-# Count occurences
+
 occurence = function(data,var){
+    #count levels occurence for categorical variables
     library(dplyr)
     vec = data[,var]
     data_vec = data.frame(vec)
     return(count(data_vec,vec))}
 
 
-#NANS AND DATA TYPE -----------------------------------------------------
 
+#NANS AND DATA TYPE ------------------------------------------------------------
+# Several variables surpass 50%, some even the 90%, surely one of the limitations
+# for retrospective data collection
 
 name_list = names(data) # variable names
 Nans = is.na(data) # Nan matrix
-missing_var = 100*apply(Nans,2,sum)/dim(data)[1] # Nan occurence
+missing_var = 100*apply(Nans,2,sum)/dim(data)[1] #Nan percentage per variables
 
 #convert string into categorical
 for (i in 1:ncol(data)){
@@ -71,21 +83,16 @@ for (i in 1:ncol(data)){
 }
 
 class_list = sapply(data,class)  # data type list
-factor_index = which( class_list == 'factor') #position of categorical variables
+factor_index = which( class_list == 'factor') #position of categoricals
 
 
-# GAUSSIANITY_CHECK  NONE OF THEM ARE GAUSSIANS!!! (rank test is needed)
+# GAUSSIANITY_CHECK  NONE OF THEM ARE GAUSSIANS!!! (non parametric test are needed)
 ks.test(scale(data$DATSCAN_CAUDATE_L),"pnorm")
 ks.test(scale(data$DATSCAN_CAUDATE_R),"pnorm")
 ks.test(scale(data$DATSCAN_PUTAMEN_L),"pnorm")
 ks.test(scale(data$DATSCAN_PUTAMEN_R),"pnorm")
 ks.test(scale(data$DATSCAN_PUTAMEN_L_ANT),"pnorm")
 ks.test(scale(data$DATSCAN_PUTAMEN_R_ANT),"pnorm")
-
-#DATA ANALYSIS------------------------------------------------------------------
-#DAT_SCAN VARIABLES DICREASE WITH AGE and they have a different baseline between Male and Female !!!!!!!
-#write the code
-
 
 #ASYMMETRY_INDEX----------------------------------------------------------------
 
@@ -119,29 +126,18 @@ cor(AI[data$COHORT == "PD",])
 cor(AI[data$COHORT == "SWEDD",])
 
 
+#DATA ANALYSIS------------------------------------------------------------------
+#DAT_SCAN VARIABLES DICREASE WITH AGE and they have a different baseline between Male and Female !!!!!!!
+#write the code
 
-#HC ANALYSIS (HEALTH COHORT)---------------------------------
-#No significant differences have been found between left and right
 HC = data[data$COHORT %in% as.factor("HC"),]
-lateralization(HC)
-
-
-#PD ANALYSIS--------------------------------------------------
-# No significant differences have been found between left and right
-# - putamen_R_ant (p = 0.025)   
-# - caudate (p = 0.516)
-# - putamen (p = 0.1499)
-# Could subgroup variance be the reason? We could run the same study
-# but only for right handed or male ect
-
 PD = data[data$COHORT %in% as.factor("PD"),]
+SWEDD = data[data$COHORT == "SWEDD",]
 
-lateralization(PD)
-boxplot(PD$DATSCAN_CAUDATE_L,PD$DATSCAN_CAUDATE_R)
-boxplot(PD$DATSCAN_PUTAMEN_L_ANT,PD$DATSCAN_PUTAMEN_R_ANT)
+boxplot(AI_caudate ~ data$NP1PTOT, data )
+cor.test(data$AI_caudate,data$NP1PTOT)
 
-
-# COnfounders (Age, Sex)---------------------------(SEZIONE DA RIVEDERE)
+# Comparisons (Age, Sex)---------------------------(SEZIONE DA RIVEDERE)
 
 Male = HC[HC$SEX == 'Male',]
 Female = HC[HC$SEX == 'Female',]
@@ -151,7 +147,7 @@ Subgroup_comp(Male,Female) #significant differences between male and female disa
 #fai un wilcoxon test tra maschi e femmine per gli AI
 
 
-Confounder(HC,PD,"ENROLL_AGE")
+Comparison(HC,PD,"ENROLL_AGE")
 
 
 #Numerical Covariates correlation
@@ -176,6 +172,32 @@ for (ii in 1:length(ind)){
 }
 
 numerical_list = name_list[-factor_index]
+
+
+
+#HC ANALYSIS (HEALTH COHORT)---------------------------------
+#No significant differences have been found between left and right
+lateralization(HC)
+HC_np1Rtot = occurence(HC,"NP1RTOT")
+
+#PD ANALYSIS--------------------------------------------------
+# No significant differences have been found between left and right
+# - putamen_R_ant (p = 0.025)   
+# - caudate (p = 0.516)
+# - putamen (p = 0.1499)
+# Could subgroup variance be the reason? We could run the same study
+# but only for right handed or male ect
+
+lateralization(PD)
+boxplot(PD$DATSCAN_CAUDATE_L,PD$DATSCAN_CAUDATE_R)
+boxplot(PD$DATSCAN_PUTAMEN_L_ANT,PD$DATSCAN_PUTAMEN_R_ANT)
+
+PD_np1Rtot = occurence(PD,"NP1RTOT")
+
+#SWEDD
+lateralization(SWEDD)
+SWEDD_np1Rtot = occurence(SWEDD,"NP1RTOT")
+
 
 
 #implementa glm usando prima i variabili tot dei test attitudianali
